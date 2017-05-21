@@ -1,0 +1,80 @@
+                                              PATH                            GET                           POST                  PUT               DELETE                PATCH
+                                            chains                              +                              +                    -                    -                    -
+                                     chains/:cname                + (show policy)                              -              + (pol)                    +                    -
+                               chains/:cname/rules                 + (rule match)                              +            + (batch)            + (flush)                    -
+                          chains/:cname/rule/:rnum                              +                              -                    +                    +  + (+ change number)
+                                             rules  + (iptables-save, rule match)                              - + (iptables-restore)     + (global flush)                    -
+                                         transfers                              -   + (move rule between chains)                    -                    -                    -
+                         Pokombinowac z licznikami                                                                                                                             
+
+
+(ses-cell A1 "PATH" "PATH" nil nil)
+(ses-cell B1 "GET" "GET" nil nil)
+(ses-cell C1 "POST" "POST" nil nil)
+(ses-cell D1 "PUT" "PUT" nil nil)
+(ses-cell E1 "DELETE" "DELETE" nil nil)
+(ses-cell F1 "PATCH" "PATCH" nil nil)
+
+(ses-cell A2 "chains" "chains" nil nil)
+(ses-cell B2 "+" "+" nil nil)
+(ses-cell C2 "+" "+" nil nil)
+(ses-cell D2 "-" "-" nil nil)
+(ses-cell E2 "-" "-" nil nil)
+(ses-cell F2 "-" "-" nil nil)
+
+(ses-cell A3 "chains/:cname" "chains/:cname" nil nil)
+(ses-cell B3 "+ (show policy)" "+ (show policy)" nil nil)
+(ses-cell C3 "-" "-" nil nil)
+(ses-cell D3 "+ (pol)" "+ (pol)" nil nil)
+(ses-cell E3 "+" "+" nil nil)
+(ses-cell F3 "-" "-" nil nil)
+
+(ses-cell A4 "chains/:cname/rules" "chains/:cname/rules" nil nil)
+(ses-cell B4 "+ (rule match)" "+ (rule match)" nil nil)
+(ses-cell C4 "+" "+" nil nil)
+(ses-cell D4 "+ (batch)" "+ (batch)" nil nil)
+(ses-cell E4 "+ (flush)" "+ (flush)" nil nil)
+(ses-cell F4 "-" "-" nil nil)
+
+(ses-cell A5 "chains/:cname/rule/:rnum" "chains/:cname/rule/:rnum" nil nil)
+(ses-cell B5 "+" "+" nil nil)
+(ses-cell C5 "-" "-" nil nil)
+(ses-cell D5 "+" "+" nil nil)
+(ses-cell E5 "+" "+" nil nil)
+(ses-cell F5 "+ (+ change number)" "+ (+ change number)" nil nil)
+
+(ses-cell A6 "rules" "rules" nil nil)
+(ses-cell B6 "+ (iptables-save, rule match)" "+ (iptables-save, rule match)" nil nil)
+(ses-cell C6 "-" "-" nil nil)
+(ses-cell D6 "+ (iptables-restore)" "+ (iptables-restore)" nil nil)
+(ses-cell E6 "+ (global flush)" "+ (global flush)" nil nil)
+(ses-cell F6 "-" "-" nil nil)
+
+(ses-cell A7 "transfers" "transfers" nil nil)
+(ses-cell B7 "-" "-" nil nil)
+(ses-cell C7 "+ (move rule between chains)" "+ (move rule between chains)" nil nil)
+(ses-cell D7 "-" "-" nil nil)
+(ses-cell E7 "-" "-" nil nil)
+(ses-cell F7 "-" "-" nil nil)
+
+(ses-cell A8 "Pokombinowac z licznikami" "Pokombinowac z licznikami" nil nil)
+(ses-cell B8 nil nil nil nil)
+(ses-cell C8 nil nil nil nil)
+(ses-cell D8 nil nil nil nil)
+(ses-cell E8 nil nil nil nil)
+(ses-cell F8 nil nil nil nil)
+
+(ses-column-widths [50 30 30 20 20 20])
+(ses-column-printers [nil nil nil nil nil nil])
+(ses-default-printer "%.7g")
+(ses-header-row 0)
+
+( ;Global parameters (these are read first)
+ 2 ;SES file-format
+ 8 ;numrows
+ 6 ;numcols
+)
+
+;; Local Variables:
+;; mode: ses
+;; End:
