@@ -190,23 +190,70 @@
       (mapcar (lambda (c) (cons :obj c)) alist)
       alist))
 
-(defun ipt-group-options (options &optional grouped)
+(defun is-opt (string)
+  (and (> (length string) 2) (string= (subseq string 0 2) "--")))
+
+(defun global-opt-match (string)
+  (cdr (assoc string
+              '(("-p" . "protocol")
+                ("-s" . "source")
+                ("-d" . "dest")
+                ("-m" . "match")
+                ("-j" . "target"))
+              :test #'string=)))
+
+(defun custom-opt-match (string)
+  (if (is-opt string) string))
+
+(defun json-to-hash-table (json-obj)
+  (if (and (listp json-obj) (eq (car json-obj) :obj))
+      (let ((table (make-hash-table :test #'equal)))
+        (mapc (lambda (c)
+                (setf (gethash (car c) table)
+                      (json-to-hash-table (cdr c))))
+              (cdr json-obj))
+        table)
+      json-obj))
+
+(defun ipt-group-options (options &optional (match-fn #'global-opt-match) grouped)
   (if options
-      (let ((opt (assoc (car options)
-                        '(("-p" . "protocol")
-                          ("-s" . "source")
-                          ("-d" . "dest")
-                          ("-m" . "match")
-                          ("-j" . "target"))
-                        :test #'equal)))
+      (let ((opt (funcall match-fn (car options))))
         (if opt
-            (cons (push (cdr opt) grouped) (ipt-group-options (cdr options)))
-            (ipt-group-options (cdr options) (cons (car options) grouped))))))
+            (if (string= (cadr options) "!")
+                (cons (cons opt (cons :neg grouped))
+                      (ipt-group-options (cddr options) match-fn))
+                (cons (push opt grouped)
+                      (ipt-group-options (cdr options) match-fn)))
+            (ipt-group-options (cdr options) match-fn (cons (car options) grouped))))))
 
 (defun ipt-rule-list-to-json (lines)
-  (mapcar (lambda (line)
-            (ipt-group-options (cddr (cl-ppcre:split " +" line))))
-          lines))
+  (jsown:to-json
+   (mapcar (lambda (line)
+             (let (params
+                   matches
+                   target-name
+                   target-options)
+               (loop for item in
+                    (ipt-group-options (nreverse (cddr (cl-ppcre:split " +" line))))
+                  do
+                    (cond
+                      ((string= (car item) "target")
+                       (setq target-name (cadr item)
+                             target-options (cddr item)))
+                      ((string= (car item) "match")
+                       (format t "~A~%" (cddr item))
+                       (push (cons (cadr item)
+                                   (cons :obj
+                                         (ipt-group-options (nreverse (cddr item))
+                                                            #'custom-opt-match)))
+                             matches))
+                      (t
+                       (push (cons (car item) (cadr item)) params))))
+               `(:obj
+                 ("params" . ,(cons :obj params))
+                 ("matches" . ,(cons :obj matches))
+                 ("target" . (:obj ("name" . ,target-name) ("options" . ,target-options))))))
+           lines)))
 
 (defun ipt-rules-list (chain)
   (let* ((table (hunchentoot:post-parameter "table"))

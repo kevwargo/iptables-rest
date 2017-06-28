@@ -7,7 +7,7 @@ function iptRequest(url, method, data, selector) {
 			$(selector).html(renderjson(data));
 		},
 		error: function(jqXHR) {
-			alert(jqXHR.responseJSON.message);
+			alert(jqXHR.responseJSON ? jqXHR.responseJSON.message : "Unknown error");
 		}
 	});
 }
@@ -21,4 +21,8 @@ $(function() {
 		event.preventDefault();
 		iptRequest('/chains', 'post', {table: $('#table-name').val(), chain: $('#chain-name').val()}, '#chain-create-result');
 	});
+	$('#rule-list-button').click(function(event) {
+		event.preventDefault();
+		iptRequest('/chains/' + $("#chain-name").val() + '/rules', 'get', [], '#rule-list-result');
+	})
 });
