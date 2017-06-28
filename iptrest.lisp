@@ -1,68 +1,228 @@
 (require 'hunchentoot)
+(require 'jsown)
+
 
 (defvar default-routes nil)
 (setf default-routes
-      '(("^/$" . ipt-root-handler)
-        ("^/chains/?$" . ipt-chains-handler)
-        ("^/chains/([a-zA-Z0-9_]+)/?$" . ipt-chain-handler)
-        ("^/chains/([a-zA-Z0-9_]+)/rules/?$" . ipt-rules-handler)
-        ("^/chains/([a-zA-Z0-9_]+)/rules/([0-9]+)/?$" . ipt-rule-handler)))
+      '(("^/chains/*$"
+         (:get . ipt-chains-list)
+         (:post . ipt-chain-create))
+        ("^/chains/([a-zA-Z0-9_]+)/*$"
+         (:get . ipt-chain-details)
+         (:put . ipt-chain-set-policy)
+         (:delete . ipt-chain-delete))
+        ("^/chains/([a-zA-Z0-9_]+)/rules/*$"
+         (:get . ipt-rules-list)
+         (:post . ipt-rule-create)
+         (:put . ipt-rules-batch-insert)
+         (:delete . ipt-chain-flush))
+        ("^/chains/([a-zA-Z0-9_]+)/rules/([0-9]+)/*$"
+         (:get . ipt-rule-show)
+         (:put . ipt-rule-replace)
+         (:delete . ipt-rule-delete)
+         (:patch . ipt-rule-change-number))
+        ("^/rules/*$"
+         (:get . ipt-rules-save)
+         (:put . ipt-rules-restore)
+         (:delete . ipt-global-flush))
+        ("^/transfers/*$"
+         (:post . ipt-rule-move))))
+
+
+(defmethod request-static-path ((request hunchentoot:request))
+  (multiple-value-bind (matched groups)
+      (cl-ppcre:scan-to-strings "^/?(index.html|script.js)?/*$"
+                                (hunchentoot:script-name request))
+    (if matched (or (svref groups 0) "index.html"))))
+
+(defun ipt-static-handler (path)
+  (hunchentoot:handle-static-file (parse-namestring path)))
 
 (defclass iptrest-acceptor (hunchentoot:acceptor)
   ((route-table
     :accessor route-table
     :initform default-routes
-    :initarg :route-table)
-   (request-class
-    :initform 'iptrest-request))
+    :initarg :route-table))
   (:default-initargs
    :port 8808))
 
-(defclass iptrest-request (hunchentoot:request) ())
+(defclass rule ()
+  ((rule-options
+    :reader rule-options
+    :initform nil
+    :initarg :rule-options)
+   (rule-matches
+    :reader rule-matches
+    :initform nil
+    :initarg :rule-matches)
+   (rule-target
+    :reader rule-target
+    :initform nil
+    :initarg :rule-target)))
 
-(defmethod hunchentoot:post-parameters ((request iptrest-request))
-  (let ((hunchentoot:*methods-for-post-parameters* '(:post :put :patch)))
-    (call-next-method)))
+;; (defmethod )
 
 (defmethod hunchentoot:acceptor-dispatch-request ((iptrest iptrest-acceptor) request)
-  (hunchentoot:acceptor-log-message iptrest 'info "SCRIPT-NAME: ~S"
-                                    (hunchentoot:script-name request))
-  (mapc (lambda (route)
-          (let* ((re (car route))
-                 (handler (cdr route)))
-            (multiple-value-bind (match-whole match-groups)
-                (cl-ppcre:scan-to-strings
-                 re
-                 (hunchentoot:script-name request))
-              (when match-whole
-                (return-from hunchentoot:acceptor-dispatch-request
-                  (apply handler request (map 'list 'identity match-groups)))))))
-        (route-table iptrest))
-  (setf (hunchentoot:return-code hunchentoot:*reply*) hunchentoot:+http-not-found+)
-  (hunchentoot:abort-request-handler))
+  (let ((static-path (request-static-path request)))
+    (if static-path
+        (ipt-static-handler static-path)
+        (progn
+          (mapc (lambda (route)
+                  (let ((path (car route))
+                        (handlers (cdr route)))
+                    (multiple-value-bind (matched groups)
+                        (cl-ppcre:scan-to-strings path (hunchentoot:script-name request))
+                      (if matched
+                          (let ((handler (assoc (hunchentoot:request-method request)
+                                                handlers)))
+                            (if handler
+                                (progn
+                                  (setf (hunchentoot:content-type*) "application/json")
+                                  (return-from hunchentoot:acceptor-dispatch-request
+                                    (apply (cdr handler) (map 'list 'identity groups))))
+                                (progn
+                                  (setf (hunchentoot:return-code*)
+                                        hunchentoot:+http-method-not-allowed+)
+                                  (hunchentoot:abort-request-handler))))))))
+                (route-table iptrest))
+          (setf (hunchentoot:return-code hunchentoot:*reply*) hunchentoot:+http-not-found+)
+          (hunchentoot:abort-request-handler)))))
 
-(defun ipt-root-handler (request)
-  (format nil "(~S) root (~S) (~S)~%"
-          (hunchentoot:request-method request)
-          (hunchentoot:get-parameters request)
-          (hunchentoot:post-parameters request)))
+(defun ipt-abort-request-handler (http-code error-code error-message)
+  (setf (hunchentoot:return-code*) http-code)
+  (hunchentoot:abort-request-handler
+   (jsown:to-json `(:obj ("code" . ,error-code) ("message" . ,error-message)))))
 
-(defun ipt-chains-handler (request)
-  (format nil "(~S) chains~%"
-          (hunchentoot:request-method request)))
+(defun execute-iptables-cmd (cmd)
+  (multiple-value-bind (stdout stderr exit-code)
+      (uiop:run-program cmd
+                        :output :lines
+                        :error-output :string
+                        :ignore-error-status t)
+    (if (= exit-code 0)
+        stdout
+        (ipt-abort-request-handler
+         500 1
+         (format nil "Command '~a' failed with code ~d and error: ~a"
+                 cmd exit-code stderr)))))
 
-(defun ipt-chain-handler (request chain-name)
-  (format nil "(~S) chain `~a'~%"
-          (hunchentoot:request-method request)
-          chain-name))
+(defun validate-name (name &optional err-code err-message)
+  (if (cl-ppcre:scan "^[a-zA-Z0-9_]+$" name)
+      name
+      (ipt-abort-request-handler 400 (or err-code 400) (or err-message (format nil "Invalid name: ~a" name)))))
 
-(defun ipt-rules-handler (request chain-name)
-  (format nil "(~S) rules (chain `~a')~%"
-          (hunchentoot:request-method request)
-          chain-name))
+(defun validate-number (number &optional err-code err-message)
+  (if (cl-ppcre:scan "^[0-9]+$" number)
+      (parse-integer number)
+      (ipt-abort-request-handler 400 (or err-code 400) (or err-message (format nil "Invalid number: ~a" number)))))
 
-(defun ipt-rule-handler (request chain-name rule-num)
-  (format nil "(~S) rule ~d (chain `~a')~%"
-          (hunchentoot:request-method request)
-          rule-num
-          chain-name))
+(defun make-table-arg (table)
+  (if (or (not table) (string= table "")) ""
+      (format nil "-t ~a" (validate-name table 400 "Invalid table name"))))
+
+(defun grep-lines (handler regex lines)
+  (remove nil
+          (mapcar
+           (lambda (line)
+             (multiple-value-bind (matched groups)
+                 (cl-ppcre:scan-to-strings regex line)
+               (when matched (apply handler matched (map 'list 'identity groups)))))
+           lines)))
+
+(defun ipt-chains-list ()
+  (let* ((table (hunchentoot:get-parameter "table"))
+         (cmd (format nil "sudo iptables ~a -L"
+                      (make-table-arg table))))
+    (jsown:to-json
+     (grep-lines (lambda (ignored-1 chain ignored-2 policy refcount)
+                   `(:obj ("chain" . ,chain) ("builtin" . ,(if policy :true :false))
+                          ,(if policy
+                               `("policy" . ,policy)
+                               `("refcount" . ,refcount))))
+                 "Chain ([a-zA-Z0-9_]+) \\((policy ([a-zA-Z0-9_]+)|([0-9]+) references)\\)"
+                 (execute-iptables-cmd cmd)))))
+
+
+(defun ipt-chain-create ()
+  (let* ((table (hunchentoot:post-parameter "table"))
+         (chain (hunchentoot:post-parameter "chain"))
+         (cmd (format nil
+                      "sudo iptables ~a -N ~a"
+                      (make-table-arg table)
+                      (validate-name chain))))
+    (jsown:to-json (execute-iptables-cmd cmd))))
+
+
+(defun ipt-chain-details (chain)
+  (let* ((table (hunchentoot:get-parameter "table"))
+         (cmd (format nil "sudo iptables ~a -L ~a"
+                      (make-table-arg table)
+                      chain))
+         (lines (grep-lines (lambda (ignored-1 chain ignored-2 policy refcount)
+                              `(:obj ("builtin" . ,(if policy :true :false))
+                                     ,(if policy
+                                          `("policy" . ,policy)
+                                          `("refcount" . ,refcount))))
+                            "Chain ([a-zA-Z0-9_]+) \\((policy ([a-zA-Z0-9_]+)|([0-9]+) references)\\)"
+                            (execute-iptables-cmd cmd))))
+    (if (not lines)
+        (ipt-abort-request-handler 500 500 "Unexpected output by iptables")
+        (jsown:to-json (car lines)))))
+
+(defun ipt-chain-set-policy (chain)
+  (let* ((table (hunchentoot:post-parameter "table"))
+         (policy (hunchentoot:post-parameter "policy"))
+         (cmd (format nil "sudo iptables ~a -P ~a ~a"
+                      (make-table-arg table)
+                      chain
+                      (validate-name policy))))
+    (jsown:to-json (execute-iptables-cmd cmd))))
+
+(defun ipt-chain-delete (chain)
+  (let* ((table (hunchentoot:post-parameter "table"))
+         (cmd (format nil "sudo iptables ~a -X ~a"
+                      (make-table-arg table)
+                      (validate-name chain))))
+    (jsown:to-json (execute-iptables-cmd cmd))))
+
+(defun alist-to-json-obj (alist)
+  (if (consp alist)
+      (mapcar (lambda (c) (cons :obj c)) alist)
+      alist))
+
+(defun ipt-group-options (options &optional grouped)
+  (if options
+      (let ((opt (assoc (car options)
+                        '(("-p" . "protocol")
+                          ("-s" . "source")
+                          ("-d" . "dest")
+                          ("-m" . "match")
+                          ("-j" . "target"))
+                        :test #'equal)))
+        (if opt
+            (cons (push (cdr opt) grouped) (ipt-group-options (cdr options)))
+            (ipt-group-options (cdr options) (cons (car options) grouped))))))
+
+(defun ipt-rule-list-to-json (lines)
+  (mapcar (lambda (line)
+            (ipt-group-options (cddr (cl-ppcre:split " +" line))))
+          lines))
+
+(defun ipt-rules-list (chain)
+  (let* ((table (hunchentoot:post-parameter "table"))
+         (cmd (format nil "sudo iptables ~a -S ~a"
+                      (make-table-arg table)
+                      (validate-name chain)))
+         (lines (cdr (execute-iptables-cmd cmd))))
+    (if lines
+        (ipt-rule-list-to-json lines)
+        (ipt-abort-request-handler 500 500 "Unexpected output from iptables"))))
+    
+
+(defun iptrest-restart ()
+  (if (boundp 'ipt-acceptor)
+      (hunchentoot:stop ipt-acceptor))
+  (defparameter ipt-acceptor (make-instance 'iptrest-acceptor))
+  (hunchentoot:start ipt-acceptor))
+
+(defparameter default-server (make-instance 'hunchentoot:acceptor :port 8809))

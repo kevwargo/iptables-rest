@@ -2,7 +2,7 @@
                                             chains                              +                              +                    -                    -                    -
                                      chains/:cname                + (show policy)                              -              + (pol)                    +                    -
                                chains/:cname/rules                 + (rule match)                              +            + (batch)            + (flush)                    -
-                          chains/:cname/rule/:rnum                              +                              -                    +                    +  + (+ change number)
+                         chains/:cname/rules/:rnum                              +                              -                    +                    +  + (+ change number)
                                              rules  + (iptables-save, rule match)                              - + (iptables-restore)     + (global flush)                    -
                                          transfers                              -   + (move rule between chains)                    -                    -                    -
                          Pokombinowac z licznikami                                                                                                                             
@@ -36,7 +36,7 @@
 (ses-cell E4 "+ (flush)" "+ (flush)" nil nil)
 (ses-cell F4 "-" "-" nil nil)
 
-(ses-cell A5 "chains/:cname/rule/:rnum" "chains/:cname/rule/:rnum" nil nil)
+(ses-cell A5 "chains/:cname/rules/:rnum" "chains/:cname/rules/:rnum" nil nil)
 (ses-cell B5 "+" "+" nil nil)
 (ses-cell C5 "-" "-" nil nil)
 (ses-cell D5 "+" "+" nil nil)
