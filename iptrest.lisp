@@ -220,7 +220,7 @@
       (let ((opt (funcall match-fn (car options))))
         (if opt
             (if (string= (cadr options) "!")
-                (cons (cons opt (cons :neg grouped))
+                (cons (cons opt (cons -1 grouped))
                       (ipt-group-options (cddr options) match-fn))
                 (cons (push opt grouped)
                       (ipt-group-options (cdr options) match-fn)))
@@ -241,14 +241,13 @@
                        (setq target-name (cadr item)
                              target-options (cddr item)))
                       ((string= (car item) "match")
-                       (format t "~A~%" (cddr item))
                        (push (cons (cadr item)
                                    (cons :obj
                                          (ipt-group-options (nreverse (cddr item))
                                                             #'custom-opt-match)))
                              matches))
                       (t
-                       (push (cons (car item) (cadr item)) params))))
+                       (push item params))))
                `(:obj
                  ("params" . ,(cons :obj params))
                  ("matches" . ,(cons :obj matches))
