@@ -111,5 +111,14 @@
     (jsown:to-json
      (execute-iptables-cmd (format nil "sudo iptables ~a -A ~a ~{~a~^ ~}"
                                    (make-table-arg table)
-                                   chain
+                                   (validate-name chain)
                                    rules-list)))))
+
+(defun ipt-rule-delete (chain rulenum)
+  (let* ((table (hunchentoot:get-parameter "table"))
+         (cmd (format nil "sudo iptables ~a -D ~a ~a"
+                      (make-table-arg table)
+                      (validate-name chain)
+                      rulenum)))
+    (jsown:to-json
+     (execute-iptables-cmd cmd))))

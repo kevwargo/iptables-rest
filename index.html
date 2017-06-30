@@ -11,14 +11,25 @@
     <body>
 		<div id="tabset">
 			<ul>
+				<li><a href="#tab-rule-list">Rule list</a></li>
 				<li><a href="#tab-create-rule">Create rule</a></li>
 				<li><a href="#tab-test">Testing</a></li>
 			</ul>
-			<div id="tab-create-rule">
+
+			<div id="tab-rule-list" class="tab">
+				<div>table: <input class="table-name"/></div>
+				<div>chain: <input class="chain-name"/></div>
+				<div>
+					<button id="rule-list-button" type="button">rule list</button>
+				</div>
+				<div id="rule-list-result"></div>
+			</div>
+
+			<div id="tab-create-rule" class="tab">
 				<span>Table name:</span>
-				<input id="create-rule-table-name"/><br/>
+				<input class="table-name"/><br/>
 				<span>Chain name:</span>
-				<input id="create-rule-chain-name"/>
+				<input class="chain-name"/>
 				<form id="create-rule-form" method="post">
 					<div id="params-container" class="rule-spec">
 						<div class="spec-header">Parameters</div>
@@ -55,7 +66,7 @@
 					</div>
 					<div id="matches-container" class="rule-spec">
 						<div class="spec-header">Matches</div>
-						
+						<div id="matches-list"></div>
 						<div>
 							<button type="button" id="add-match-button">Add match</button>
 						</div>
@@ -65,7 +76,7 @@
 							<span class="spec-header">Target</span>
 							<input type="text" name="target[name]"/>
 						</div>
-							
+						
 						<div>
 							<button type="button" id="add-target-option-button">Add option</button>
 						</div>
@@ -75,25 +86,22 @@
 				</form>
 				<div id="create-rule-result"></div>
 			</div>
-			<div id="tab-test">
-				<div>table: <input id="table-name"/></div>
-				<div>chain: <input id="chain-name"/></div>
+
+			<div id="tab-test" class="tab">
+				<div>table: <input class="table-name"/></div>
+				<div>chain: <input class="chain-name"/></div>
 				<div>
 					<button id="get-chains-button" type="button">get chains</button>
 				</div>
 				<div>
 					<button id="chain-create-button" type="button">create chain</button>
 				</div>
-				<div>
-					<button id="rule-list-button" type="button">rule list</button>
-				</div>
 				<h2>Chains result</h2>
 				<div id="chains-result"></div>
 				<h2>Chain create result</h2>
 				<div id="chain-create-result"></div>
-				<h2>Rule list result</h2>
-				<div id="rule-list-result"></div>
 			</div>
+			
 		</div>
     </body>
 </html>

@@ -14,3 +14,13 @@
 .match-option {
 	margin-left: 15px;
 }
+
+#tab-rule-list table {
+	border-collapse: collapse;
+	border-spacing: 5px 5px;
+	padding: 5px;
+}
+
+#tab-rule-list table td {
+	border: 1px solid black;
+}

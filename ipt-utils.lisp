@@ -64,6 +64,14 @@
                       (ipt-group-options (cdr options) match-fn)))
             (ipt-group-options (cdr options) match-fn (cons (car options) grouped))))))
 
+(defun transform-options (options)
+  (mapcar (lambda (opt)
+            `(:obj ("name" . ,(car opt)) . ,(if (eq (cadr opt) -1)
+                                                `(("value" . ,(format nil "~{~a~^ ~}" (cddr opt)))
+                                                  ("invert" . :true))
+                                                `(("value" . ,(format nil "~{~a~^ ~}" (cdr opt)))))))
+          options))
+
 (defun ipt-rule-list-to-json (lines)
   (jsown:to-json
    (mapcar (lambda (line)
@@ -79,16 +87,17 @@
                        (setq target-name (cadr item)
                              target-options (cddr item)))
                       ((string= (car item) "match")
-                       (push (cons (cadr item)
-                                   (cons :obj
-                                         (ipt-group-options (nreverse (cddr item))
-                                                            #'custom-opt-match)))
+                       (push `(:obj ("name" . ,(cadr item))
+                                    ,(cons "options"
+                                           (transform-options
+                                            (ipt-group-options (nreverse (cddr item))
+                                                               #'custom-opt-match))))
                              matches))
                       (t
                        (push item params))))
                `(:obj
-                 ("params" . ,(cons :obj params))
-                 ("matches" . ,(cons :obj matches))
+                 ("params" . ,(transform-options params))
+                 ("matches" . ,matches)
                  ("target" . (:obj ("name" . ,target-name)
                                    ,(cons
                                      "options"
