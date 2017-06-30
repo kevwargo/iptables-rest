@@ -1,29 +1,99 @@
 <html>
 	<head>
 		<link rel="stylesheet" href="//code.jquery.com/ui/1.12.1/themes/base/jquery-ui.css">
+		<link rel="stylesheet" href="/style.css">
 		<script src="https://code.jquery.com/jquery-1.12.4.js"></script>
 		<script src="https://code.jquery.com/ui/1.12.1/jquery-ui.js"></script>
 		<script src="https://raw.githubusercontent.com/caldwell/renderjson/master/renderjson.js"></script>
+		<script src="https://raw.githubusercontent.com/macek/jquery-serialize-object/master/dist/jquery.serialize-object.min.js"></script>
 		<script src="/script.js"></script>
 	</head>
     <body>
-        <h1>HERE</h1>
-		<div>table: <input id="table-name"/></div>
-		<div>chain: <input id="chain-name"/></div>
-		<div>
-			<button id="get-chains-button" type="button">get chains</button>
+		<div id="tabset">
+			<ul>
+				<li><a href="#tab-create-rule">Create rule</a></li>
+				<li><a href="#tab-test">Testing</a></li>
+			</ul>
+			<div id="tab-create-rule">
+				<span>Table name:</span>
+				<input id="create-rule-table-name"/><br/>
+				<span>Chain name:</span>
+				<input id="create-rule-chain-name"/>
+				<form id="create-rule-form" method="post">
+					<div id="params-container" class="rule-spec">
+						<div class="spec-header">Parameters</div>
+						<div>
+							<input type="checkbox" class="switch-parameter" name="ignore" data-name="protocol" data-selector="#protocol-input"/>
+							<span>Protocol:</span>
+							<span id="protocol-input"></span>
+						</div>
+						<div>
+							<input type="checkbox" class="switch-parameter" name="ignore" data-name="source" data-selector="#source-input"/>
+							<span>Source IP address:</span>
+							<span id="source-input"></span>
+						</div>
+						<div>
+							<input type="checkbox" class="switch-parameter" name="ignore" data-name="dest" data-selector="#dest-input"/>
+							<span>Destination IP address:</span>
+							<span id="dest-input"></span>
+						</div>
+						<div>
+							<input type="checkbox" class="switch-parameter" name="ignore" data-name="in" data-selector="#in-input"/>
+							<span>Receiving interface:</span>
+							<span id="in-input"></span>
+						</div>
+						<div>
+							<input type="checkbox" class="switch-parameter" name="ignore" data-name="out" data-selector="#out-input"/>
+							<span>Sending interface:</span>
+							<span id="out-input"></span>
+						</div>
+						<div>
+							<input type="checkbox" class="switch-parameter" name="ignore" data-name="fragment" data-selector="#fragment-input"/>
+							<span>Fragment:</span>
+							<span id="fragment-input"></span>
+						</div>
+					</div>
+					<div id="matches-container" class="rule-spec">
+						<div class="spec-header">Matches</div>
+						
+						<div>
+							<button type="button" id="add-match-button">Add match</button>
+						</div>
+					</div>
+					<div id="target-container" class="rule-spec">
+						<div>
+							<span class="spec-header">Target</span>
+							<input type="text" name="target[name]"/>
+						</div>
+							
+						<div>
+							<button type="button" id="add-target-option-button">Add option</button>
+						</div>
+					</div>
+
+					<input type="submit" value="Create rule"/>
+				</form>
+				<div id="create-rule-result"></div>
+			</div>
+			<div id="tab-test">
+				<div>table: <input id="table-name"/></div>
+				<div>chain: <input id="chain-name"/></div>
+				<div>
+					<button id="get-chains-button" type="button">get chains</button>
+				</div>
+				<div>
+					<button id="chain-create-button" type="button">create chain</button>
+				</div>
+				<div>
+					<button id="rule-list-button" type="button">rule list</button>
+				</div>
+				<h2>Chains result</h2>
+				<div id="chains-result"></div>
+				<h2>Chain create result</h2>
+				<div id="chain-create-result"></div>
+				<h2>Rule list result</h2>
+				<div id="rule-list-result"></div>
+			</div>
 		</div>
-		<div>
-			<button id="chain-create-button" type="button">create chain</button>
-		</div>
-		<div>
-			<button id="rule-list-button" type="button">rule list</button>
-		</div>
-		<h2>Chains result</h2>
-		<div id="chains-result"></div>
-		<h2>Chain create result</h2>
-		<div id="chain-create-result"></div>
-		<h2>Rule list result</h2>
-		<div id="rule-list-result"></div>
     </body>
 </html>

@@ -1,0 +1,16 @@
+.rule-spec {
+	margin-bottom: 20px;
+}
+
+.spec-header {
+	font-weight: bold;
+	font-size: 20px;
+}
+
+.match {
+	margin-left: 20px;
+}
+
+.match-option {
+	margin-left: 15px;
+}
